@@ -1,0 +1,6 @@
+{
+  "name": "Chess Legends",
+  "description": "Aplikasi Catur Edu-Kompetitif dengan fitur PvP, PvE, modula belajar taktis, dan papan peringkat.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
