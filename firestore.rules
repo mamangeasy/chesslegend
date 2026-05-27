@@ -1,0 +1,46 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() { return request.auth != null; }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_-]+$'); }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['name', 'elo', 'rankTitle', 'isGuest', 'completedPuzzles', 'createdAt', 'updatedAt']) 
+          && data.name is string && data.name.size() <= 50 && data.name.size() > 0
+          && data.elo is number
+          && data.rankTitle is string && data.rankTitle.size() <= 20
+          && data.isGuest is bool
+          && data.completedPuzzles is list;
+    }
+
+    function isValidMatch(data) {
+      return data.keys().hasAll(['whitePlayerId', 'blackPlayerId', 'fen', 'turn', 'status', 'winner', 'terminationReason', 'startedAt', 'updatedAt'])
+        && data.whitePlayerId is string && data.whitePlayerId.size() <= 128
+        && data.blackPlayerId is string && data.blackPlayerId.size() <= 128
+        && data.fen is string && data.fen.size() <= 255
+        && data.turn in ['w', 'b']
+        && data.status in ['ongoing', 'finished']
+        && data.winner in ['white', 'black', 'draw', 'none']
+        && data.terminationReason in ['checkmate', 'timeout', 'resignation', 'draw', 'none'];
+    }
+
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && request.auth.uid == userId;
+    }
+
+    match /matches/{matchId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && (
+        resource == null || 
+        resource.data.whitePlayerId == request.auth.uid || 
+        resource.data.blackPlayerId == request.auth.uid || 
+        request.resource.data.whitePlayerId == request.auth.uid ||
+        request.resource.data.blackPlayerId == request.auth.uid ||
+        resource.data.blackPlayerId == "waiting"
+      );
+    }
+  }
+}

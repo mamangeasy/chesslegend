@@ -1,0 +1,45 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "A user profile in the system.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "The user's display name." },
+        "elo": { "type": "number", "description": "The user's Elo rating." },
+        "rankTitle": { "type": "string", "description": "The user's rank title (e.g. Bronze I)." },
+        "isGuest": { "type": "boolean", "description": "Whether the user is a guest." },
+        "createdAt": { "type": "timestamp" },
+        "updatedAt": { "type": "timestamp" }
+      },
+      "required": ["name", "elo", "rankTitle", "isGuest", "createdAt", "updatedAt"]
+    },
+    "Match": {
+      "title": "Match",
+      "description": "A chess match between two players or a player and a bot.",
+      "type": "object",
+      "properties": {
+        "whitePlayerId": { "type": "string" },
+        "blackPlayerId": { "type": "string" },
+        "fen": { "type": "string", "description": "The current FEN board state." },
+        "turn": { "type": "string", "enum": ["w", "b"], "description": "Whose turn it is." },
+        "status": { "type": "string", "enum": ["ongoing", "finished"], "description": "Match status." },
+        "winner": { "type": "string", "enum": ["white", "black", "draw", "none"] },
+        "terminationReason": { "type": "string", "enum": ["checkmate", "timeout", "resignation", "draw", "none"] },
+        "startedAt": { "type": "timestamp" },
+        "updatedAt": { "type": "timestamp" }
+      },
+      "required": ["whitePlayerId", "blackPlayerId", "fen", "turn", "status", "winner", "terminationReason", "startedAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "Public user profiles containing Elo and rank."
+    },
+    "/matches/{matchId}": {
+      "schema": { "$ref": "#/entities/Match" },
+      "description": "Chess matches."
+    }
+  }
+}
