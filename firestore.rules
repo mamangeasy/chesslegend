@@ -8,14 +8,15 @@ service cloud.firestore {
     function isSignedIn() { return request.auth != null; }
     function incoming() { return request.resource.data; }
     function existing() { return resource.data; }
-    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_-]+$'); }
 
     function isValidUser(data) {
-      return data.keys().hasAll(['name', 'elo', 'rankTitle', 'isGuest', 'createdAt', 'updatedAt']) 
+      return data.keys().hasAll(['name', 'elo', 'rankTitle', 'isGuest', 'completedPuzzles', 'createdAt', 'updatedAt']) 
           && data.name is string && data.name.size() <= 50 && data.name.size() > 0
           && data.elo is number
           && data.rankTitle is string && data.rankTitle.size() <= 20
-          && data.isGuest is bool;
+          && data.isGuest is bool
+          && data.completedPuzzles is list;
     }
 
     function isValidMatch(data) {
@@ -30,61 +31,20 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      // allow anyone to read profiles for leaderboards and match setup
-      allow get: if isSignedIn() && isValidId(userId);
-      allow list: if isSignedIn();
-      
-      allow create: if isSignedIn() 
-                    && isValidId(userId)
-                    && request.auth.uid == userId
-                    && isValidUser(incoming())
-                    && incoming().createdAt == request.time
-                    && incoming().updatedAt == request.time;
-
-      allow update: if isSignedIn() 
-                    && isValidId(userId)
-                    && request.auth.uid == userId
-                    && isValidUser(incoming())
-                    && incoming().createdAt == existing().createdAt
-                    && incoming().isGuest == existing().isGuest;
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && request.auth.uid == userId;
     }
 
     match /matches/{matchId} {
-      allow list: if isSignedIn();
-      allow get: if isSignedIn();
-      
-      allow create: if isSignedIn()
-                    && isValidId(matchId)
-                    && isValidMatch(incoming())
-                    && (incoming().whitePlayerId == request.auth.uid || incoming().blackPlayerId == request.auth.uid)
-                    && incoming().status == 'ongoing'
-                    && incoming().fen == 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
-                    && incoming().turn == 'w'
-                    && incoming().winner == 'none'
-                    && incoming().terminationReason == 'none';
-
-      allow update: if isSignedIn()
-                    && isValidId(matchId)
-                    && isValidMatch(incoming())
-                    && (
-                      // Case 1: Existing player making a move, or ending the match, or sending a chat message
-                      (
-                        (existing().whitePlayerId == request.auth.uid || existing().blackPlayerId == request.auth.uid)
-                        && incoming().whitePlayerId == existing().whitePlayerId
-                        && incoming().blackPlayerId == existing().blackPlayerId
-                        && (existing().status == 'ongoing' || (existing().status == 'finished' && incoming().status == 'finished' && incoming().fen == existing().fen && incoming().winner == existing().winner))
-                      )
-                      ||
-                      // Case 2: New player joining a waiting game
-                      (
-                        existing().blackPlayerId == "waiting"
-                        && incoming().whitePlayerId == existing().whitePlayerId
-                        && incoming().blackPlayerId == request.auth.uid
-                        && incoming().status == "ongoing"
-                        && incoming().winner == "none"
-                        && incoming().terminationReason == "none"
-                      )
-                    );
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && (
+        resource == null || 
+        resource.data.whitePlayerId == request.auth.uid || 
+        resource.data.blackPlayerId == request.auth.uid || 
+        request.resource.data.whitePlayerId == request.auth.uid ||
+        request.resource.data.blackPlayerId == request.auth.uid ||
+        resource.data.blackPlayerId == "waiting"
+      );
     }
   }
 }
